@@ -168,6 +168,7 @@ export function ProviderList({
     (provider: Provider): boolean => {
       switch (appId) {
         case "mcode":
+        case "dsh":
           return provider.meta?.liveConfigManaged === true;
         case "opencode":
           return opencodeLiveIds?.includes(provider.id) ?? false;
@@ -212,6 +213,9 @@ export function ProviderList({
       }
       if (appId === "hermes") {
         return (await providersApi.importHermesFromLive()) > 0;
+      }
+      if (appId === "dsh") {
+        return (await providersApi.importDshFromLive()) > 0;
       }
       if (appId === "claude-desktop") {
         return (await providersApi.importClaudeDesktopFromClaude()) > 0;

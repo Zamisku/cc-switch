@@ -76,6 +76,7 @@ const createDefaultProviders = (): ProvidersByApp => ({
   pi: {},
   mcode: {},
   agy: {},
+  dsh: {},
 });
 
 const createDefaultCurrent = (): CurrentProviderState => ({
@@ -90,6 +91,7 @@ const createDefaultCurrent = (): CurrentProviderState => ({
   pi: "",
   mcode: "",
   agy: "",
+  dsh: "",
 });
 
 let providers = createDefaultProviders();
@@ -159,6 +161,7 @@ const createDefaultSessionMessages = (): Record<string, SessionMessage[]> => ({
 let sessionsState = createDefaultSessions();
 let sessionMessagesState = createDefaultSessionMessages();
 let mcpConfigs: McpConfigState = {
+  dsh: {},
   claude: {
     sample: {
       id: "sample",
@@ -287,6 +290,7 @@ export const resetProviderState = () => {
   };
   appConfigDirOverride = null;
   mcpConfigs = {
+    dsh: {},
     claude: {
       sample: {
         id: "sample",

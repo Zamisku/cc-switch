@@ -4909,5 +4909,40 @@
       "switched": "切り替えました。新しく起動する agy はこのアカウントを使います。",
       "switchedWhileRunning": "切り替えました。agy が実行中です。開いている agy は元のアカウントのままで、元のアカウントを書き戻す可能性があります。agy を終了してから開き直してください。"
     }
+  },
+  "dsh": {
+    "form": {
+      "storageHint": "保存すると DeepSeek Harness の profile（cordis.patch.yml）と .credentials.yaml に書き込まれます。DSH は自動で再読み込みするため再起動は不要です。",
+      "kind": "ルート種別",
+      "kindCustom": "サードパーティ端点（llm-pi-ai）",
+      "kindOfficial": "DeepSeek 公式（llm-deepseek）",
+      "route": "ルート名",
+      "routeHint": "小文字で始まり、小文字・数字・単一ハイフンのみ。例: my-gateway。",
+      "routeInvalid": "ルート名が不正です。小文字で始まり、小文字・数字・単一ハイフンのみ使用できます。",
+      "api": "プロトコル",
+      "apiHint": "端点が実際に対応するプロトコルを選択してください。Anthropic 互換なら anthropic-messages です。",
+      "baseUrl": "端点 URL",
+      "baseUrlPlaceholder": "https://api.example.com",
+      "baseUrlHint": "ルート URL のみ。クエリ文字列や埋め込み認証情報は不要です。",
+      "baseUrlInvalid": "端点は http(s) のルート URL である必要があります。",
+      "apiKey": "API Key",
+      "apiKeyHint": "保存時に $DSH_HOME/.credentials.yaml（0600）へ書き込まれ、DSH の設定画面では「設定済み」と表示されます。",
+      "models": "モデル",
+      "addModel": "モデルを追加",
+      "removeModel": "モデルを削除",
+      "modelIndex": "モデル {{index}}",
+      "modelId": "モデル ID",
+      "modelName": "表示名（任意）",
+      "contextWindow": "コンテキスト長（任意）",
+      "maxTokens": "最大出力（任意）",
+      "modelsEmpty": "DSH のモデル選択に出すため、モデル ID を 1 つ以上入力してください。",
+      "reasoningEffort": "推論の強さ",
+      "reasoningEffortHint": "既定モデルの reasoningEffort として profile に書き込まれます。"
+    },
+    "preset": {
+      "official": "DeepSeek 公式",
+      "anthropicCompatible": "Anthropic 互換ゲートウェイ",
+      "openaiCompatible": "OpenAI 互換ゲートウェイ"
+    }
   }
 }

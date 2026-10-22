@@ -267,6 +267,19 @@ export const providersApi = {
   async importHermesFromLive(): Promise<number> {
     return await invoke("import_hermes_providers_from_live");
   },
+
+  /**
+   * 从 DeepSeek Harness 的 profile patch 导入现有路由到数据库。
+   * DSH 的路由写在 cordis.patch.yml 里，新装用户可能已经有供应商。
+   */
+  async importDshFromLive(): Promise<number> {
+    return await invoke("import_dsh_providers_from_live");
+  },
+
+  /** DSH 数据目录（$DSH_HOME）。 */
+  async getDshHome(): Promise<string> {
+    return await invoke("get_dsh_home");
+  },
 };
 
 // ============================================================================

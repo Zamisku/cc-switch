@@ -32,6 +32,10 @@ pub(crate) fn provider_exists_in_live_config(
         AppType::Pi => crate::pi_config::pi_provider_exists(provider_id),
         AppType::Mcode => crate::mcode_config::get_providers()
             .map(|providers| providers.contains_key(provider_id)),
+        AppType::Dsh => {
+            crate::dsh_config::read_live_providers(&crate::dsh_config::DshPaths::resolve())
+                .map(|providers| providers.iter().any(|item| item.provider.id == provider_id))
+        }
         _ => Ok(false),
     }
 }
@@ -302,6 +306,7 @@ fn settings_contain_common_config(app_type: &AppType, settings: &Value, snippet:
         | AppType::Pi
         | AppType::Mcode
         | AppType::Agy
+        | AppType::Dsh
         | AppType::ClaudeDesktop => false,
     }
 }
@@ -379,7 +384,8 @@ pub(crate) fn remove_common_config_from_settings(
         | AppType::Pi
         | AppType::Mcode
         | AppType::ClaudeDesktop
-        | AppType::Agy => Ok(settings.clone()),
+        | AppType::Agy
+        | AppType::Dsh => Ok(settings.clone()),
     }
 }
 
@@ -694,6 +700,12 @@ pub(crate) fn write_live_snapshot(app_type: &AppType, provider: &Provider) -> Re
             crate::hermes_config::set_provider(&provider.id, provider.settings_config.clone())?;
             log::debug!("Hermes provider '{}' written to live config", provider.id);
         }
+        AppType::Dsh => {
+            // 只写路由行；默认模型指针由切换流程单独改（见 `switch_normal`）。
+            let paths = crate::dsh_config::DshPaths::resolve();
+            crate::dsh_config::set_provider_route(&paths, provider)?;
+            log::debug!("DSH route '{}' written to profile patch", provider.id);
+        }
         AppType::Mcode => {
             crate::mcode_config::set_provider(&provider.id, provider.settings_config.clone())?
         }
@@ -997,6 +1009,10 @@ pub fn read_live_settings(app_type: AppType) -> Result<Value, AppError> {
             "Pi providers are read from Pi's native models file".to_string(),
         )),
         AppType::Agy => crate::agy_config::read_live_settings(),
+        AppType::Dsh => Err(AppError::InvalidInput(
+            "DSH providers are read from the profile patch, not from a live settings file"
+                .to_string(),
+        )),
     }
 }
 
@@ -1111,7 +1127,12 @@ pub fn import_default_config(state: &AppState, app_type: AppType) -> Result<bool
             live
         }
         // OpenCode, OpenClaw and Hermes use additive mode and are handled by early return above
-        AppType::OpenCode | AppType::OpenClaw | AppType::Hermes | AppType::Pi | AppType::Mcode => {
+        AppType::OpenCode
+        | AppType::OpenClaw
+        | AppType::Hermes
+        | AppType::Pi
+        | AppType::Mcode
+        | AppType::Dsh => {
             unreachable!("additive mode apps are handled by early return")
         }
     };
@@ -1460,6 +1481,66 @@ pub fn import_hermes_providers_from_live(state: &AppState) -> Result<usize, AppE
     }
 
     Ok(imported + updated)
+}
+
+/// 把 DSH profile 里的路由导入数据库（启动时与手动导入都走这里）。
+///
+/// 与其它累加式应用一致：新 id 执行导入，已有 id 则用 live 的内容更新，因此每次启动都跑
+/// 是安全的；被用户标记为「仅存数据库」（`live_config_managed == Some(false)`）的行不覆盖。
+pub fn import_dsh_providers_from_live(state: &AppState) -> Result<usize, AppError> {
+    let paths = crate::dsh_config::DshPaths::resolve();
+    if !paths.patch_path().exists() {
+        return Ok(0);
+    }
+
+    let live = crate::dsh_config::read_live_providers(&paths)?;
+    if live.is_empty() {
+        return Ok(0);
+    }
+
+    let mut changed = 0usize;
+    for item in live {
+        match state.db.get_provider_by_id(&item.provider.id, "dsh")? {
+            Some(mut existing) => {
+                if existing
+                    .meta
+                    .as_ref()
+                    .and_then(|meta| meta.live_config_managed)
+                    == Some(false)
+                {
+                    continue;
+                }
+                let settings_changed = existing.settings_config != item.provider.settings_config;
+                let name_changed = existing.name != item.provider.name;
+                if !settings_changed && !name_changed {
+                    continue;
+                }
+                existing.settings_config = item.provider.settings_config;
+                existing.name = item.provider.name;
+                if existing.category.is_none() {
+                    existing.category = item.provider.category;
+                }
+                state.db.save_provider("dsh", &existing)?;
+                changed += 1;
+                log::info!("Updated DSH provider '{}' from profile", existing.id);
+            }
+            None => {
+                state.db.save_provider("dsh", &item.provider)?;
+                changed += 1;
+                log::info!(
+                    "Imported DSH provider '{}' from profile{}",
+                    item.provider.id,
+                    if item.is_current {
+                        " (current default model)"
+                    } else {
+                        ""
+                    }
+                );
+            }
+        }
+    }
+
+    Ok(changed)
 }
 
 /// Remove a Hermes provider from live config

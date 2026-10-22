@@ -691,6 +691,11 @@ impl SkillService {
             AppType::Pi => {
                 return Ok(crate::pi_config::get_pi_agent_dir()?.join("skills"));
             }
+            AppType::Dsh => {
+                // DSH 的用户级 skill 根：`$DSH_HOME/skills`（目录 bundle `<name>/SKILL.md`
+                // 或平铺 `<name>.md`，只扫一层）。DshPaths 已经处理设备级覆盖与 DSH_HOME。
+                return Ok(crate::dsh_config::DshPaths::resolve().root().join("skills"));
+            }
             AppType::Agy => {
                 return Ok(crate::config::get_home_dir()
                     .join(".gemini")
@@ -716,6 +721,7 @@ impl SkillService {
             AppType::Hermes => crate::hermes_config::get_hermes_dir().join("skills"),
             AppType::Pi => crate::pi_config::get_pi_agent_dir()?.join("skills"),
             AppType::Agy => home.join(".gemini").join("config").join("skills"),
+            AppType::Dsh => home.join(".dsh").join("skills"),
         })
     }
 

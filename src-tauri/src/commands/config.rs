@@ -163,6 +163,13 @@ pub async fn get_config_status(
                 path: dir.to_string_lossy().into_owned(),
             })
         }
+        AppType::Dsh => {
+            let paths = crate::dsh_config::DshPaths::resolve();
+            Ok(ConfigStatus {
+                exists: paths.patch_path().exists(),
+                path: paths.profile_dir().to_string_lossy().into_owned(),
+            })
+        }
     }
 }
 
@@ -190,6 +197,7 @@ pub async fn get_config_dir(app: String) -> Result<String, String> {
             .unwrap()
             .to_path_buf(),
         AppType::Agy => crate::agy_config::agy_dir(),
+        AppType::Dsh => crate::dsh_config::DshPaths::resolve().root().to_path_buf(),
     };
 
     Ok(dir.to_string_lossy().to_string())
@@ -214,6 +222,7 @@ pub async fn open_config_folder(handle: AppHandle, app: String) -> Result<bool, 
             .unwrap()
             .to_path_buf(),
         AppType::Agy => crate::agy_config::agy_dir(),
+        AppType::Dsh => crate::dsh_config::DshPaths::resolve().root().to_path_buf(),
     };
 
     if !config_dir.exists() {

@@ -55,6 +55,8 @@ pub struct VisibleApps {
     pub mcode: bool,
     #[serde(default = "default_true")]
     pub agy: bool,
+    #[serde(default = "default_true")]
+    pub dsh: bool,
 }
 
 impl Default for VisibleApps {
@@ -71,6 +73,7 @@ impl Default for VisibleApps {
             pi: true,
             mcode: true,
             agy: true,
+            dsh: true,
         }
     }
 }
@@ -90,6 +93,7 @@ impl VisibleApps {
             AppType::Pi => self.pi,
             AppType::Mcode => self.mcode,
             AppType::Agy => self.agy,
+            AppType::Dsh => self.dsh,
         }
     }
 }
@@ -534,6 +538,10 @@ pub struct AppSettings {
     pub hermes_config_dir: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pi_config_dir: Option<String>,
+    /// DeepSeek Harness 的 `$DSH_HOME`（默认 `~/.dsh`）。DSH 自己也认这个环境变量，
+    /// 设备级覆盖优先于它，方便把测试与真实账号分开。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dsh_config_dir: Option<String>,
 
     // ===== 当前供应商 ID（设备级）=====
     /// 当前 Claude 供应商 ID（本地存储，优先于数据库 is_current）
@@ -669,6 +677,7 @@ impl Default for AppSettings {
             openclaw_config_dir: None,
             hermes_config_dir: None,
             pi_config_dir: None,
+            dsh_config_dir: None,
             current_provider_claude: None,
             current_provider_claude_desktop: None,
             current_provider_codex: None,
@@ -759,6 +768,13 @@ impl AppSettings {
 
         self.pi_config_dir = self
             .pi_config_dir
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
+
+        self.dsh_config_dir = self
+            .dsh_config_dir
             .as_ref()
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
@@ -1255,6 +1271,14 @@ pub fn get_pi_override_dir() -> Option<PathBuf> {
         .map(|path| resolve_override_path(path))
 }
 
+pub fn get_dsh_override_dir() -> Option<PathBuf> {
+    let settings = settings_store().read().ok()?;
+    settings
+        .dsh_config_dir
+        .as_ref()
+        .map(|path| resolve_override_path(path))
+}
+
 pub fn preserve_codex_official_auth_on_switch() -> bool {
     settings_store()
         .read()
@@ -1337,7 +1361,7 @@ pub fn get_current_provider(app_type: &AppType) -> Option<String> {
         AppType::OpenClaw => settings.current_provider_openclaw.clone(),
         AppType::Hermes => settings.current_provider_hermes.clone(),
         AppType::Agy => settings.current_provider_agy.clone(),
-        AppType::Pi | AppType::Mcode => None,
+        AppType::Pi | AppType::Mcode | AppType::Dsh => None,
     }
 }
 
@@ -1357,7 +1381,7 @@ pub fn set_current_provider(app_type: &AppType, id: Option<&str>) -> Result<(), 
         AppType::OpenClaw => settings.current_provider_openclaw = id_owned.clone(),
         AppType::Hermes => settings.current_provider_hermes = id_owned.clone(),
         AppType::Agy => settings.current_provider_agy = id_owned.clone(),
-        AppType::Pi | AppType::Mcode => {}
+        AppType::Pi | AppType::Mcode | AppType::Dsh => {}
     })
 }
 

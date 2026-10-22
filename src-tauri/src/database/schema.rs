@@ -70,7 +70,8 @@ impl Database {
             enabled_mcode BOOLEAN NOT NULL DEFAULT 0,
             enabled_agy BOOLEAN NOT NULL DEFAULT 0,
             enabled_hermes BOOLEAN NOT NULL DEFAULT 0,
-            enabled_pi BOOLEAN NOT NULL DEFAULT 0
+            enabled_pi BOOLEAN NOT NULL DEFAULT 0,
+            enabled_dsh BOOLEAN NOT NULL DEFAULT 0
         )",
             [],
         )
@@ -102,6 +103,7 @@ impl Database {
             enabled_mcode BOOLEAN NOT NULL DEFAULT 0,
             enabled_agy BOOLEAN NOT NULL DEFAULT 0,
             enabled_hermes BOOLEAN NOT NULL DEFAULT 0,
+            enabled_dsh BOOLEAN NOT NULL DEFAULT 0,
             installed_at INTEGER NOT NULL DEFAULT 0,
             content_hash TEXT,
             updated_at INTEGER NOT NULL DEFAULT 0
@@ -591,6 +593,30 @@ impl Database {
                             }
                         }
                         Self::set_user_version(conn, 21)?;
+                    }
+                    21 => {
+                        log::info!("迁移数据库从 v21 到 v22（MCP 添加 DeepSeek Harness 支持）");
+                        if Self::table_exists(conn, "mcp_servers")? {
+                            Self::add_column_if_missing(
+                                conn,
+                                "mcp_servers",
+                                "enabled_dsh",
+                                "BOOLEAN NOT NULL DEFAULT 0",
+                            )?;
+                        }
+                        Self::set_user_version(conn, 22)?;
+                    }
+                    22 => {
+                        log::info!("迁移数据库从 v22 到 v23（Skills 添加 DeepSeek Harness 支持）");
+                        if Self::table_exists(conn, "skills")? {
+                            Self::add_column_if_missing(
+                                conn,
+                                "skills",
+                                "enabled_dsh",
+                                "BOOLEAN NOT NULL DEFAULT 0",
+                            )?;
+                        }
+                        Self::set_user_version(conn, 23)?;
                     }
                     _ => {
                         return Err(AppError::Database(format!(
@@ -3907,12 +3933,65 @@ mod tests {
     }
 
     #[test]
+    fn dsh_skills_migration_adds_flag_and_defaults_to_disabled() -> Result<(), AppError> {
+        let conn = Connection::open_in_memory()?;
+        conn.execute_batch(
+            "CREATE TABLE skills(id TEXT PRIMARY KEY, enabled_agy BOOLEAN); \
+             INSERT INTO skills VALUES ('s',1);",
+        )?;
+        Database::set_user_version(&conn, 22)?;
+        Database::apply_schema_migrations_on_conn(&conn)?;
+        assert_eq!(Database::get_user_version(&conn)?, SCHEMA_VERSION);
+        let row: (i64, i64) =
+            conn.query_row("SELECT enabled_agy, enabled_dsh FROM skills", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })?;
+        assert_eq!(row, (1, 0));
+
+        Database::apply_schema_migrations_on_conn(&conn)?;
+        let row: (i64, i64) =
+            conn.query_row("SELECT enabled_agy, enabled_dsh FROM skills", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })?;
+        assert_eq!(row, (1, 0));
+        Ok(())
+    }
+
+    #[test]
+    fn dsh_migration_adds_mcp_flag_and_defaults_to_disabled() -> Result<(), AppError> {
+        let conn = Connection::open_in_memory()?;
+        conn.execute_batch(
+            "CREATE TABLE mcp_servers(id TEXT PRIMARY KEY, enabled_agy BOOLEAN); \
+             INSERT INTO mcp_servers VALUES ('m',1);",
+        )?;
+        Database::set_user_version(&conn, 21)?;
+        Database::apply_schema_migrations_on_conn(&conn)?;
+        assert_eq!(Database::get_user_version(&conn)?, SCHEMA_VERSION);
+        let row: (i64, i64) = conn.query_row(
+            "SELECT enabled_agy, enabled_dsh FROM mcp_servers",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )?;
+        assert_eq!(row, (1, 0));
+
+        // 迁移可重复执行，已有值不变。
+        Database::apply_schema_migrations_on_conn(&conn)?;
+        let row: (i64, i64) = conn.query_row(
+            "SELECT enabled_agy, enabled_dsh FROM mcp_servers",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )?;
+        assert_eq!(row, (1, 0));
+        Ok(())
+    }
+
+    #[test]
     fn agy_migration_preserves_existing_flags_and_defaults_to_disabled() -> Result<(), AppError> {
         let conn = Connection::open_in_memory()?;
         conn.execute_batch("CREATE TABLE mcp_servers(id TEXT PRIMARY KEY, enabled_gemini BOOLEAN); CREATE TABLE skills(id TEXT PRIMARY KEY, enabled_codex BOOLEAN); INSERT INTO mcp_servers VALUES ('m',1); INSERT INTO skills VALUES ('s',1);")?;
         Database::set_user_version(&conn, 20)?;
         Database::apply_schema_migrations_on_conn(&conn)?;
-        assert_eq!(Database::get_user_version(&conn)?, 21);
+        assert_eq!(Database::get_user_version(&conn)?, SCHEMA_VERSION);
         for (table, flag) in [
             ("mcp_servers", "enabled_gemini"),
             ("skills", "enabled_codex"),

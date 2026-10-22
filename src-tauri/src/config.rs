@@ -469,6 +469,23 @@ pub fn atomic_write_private(path: &Path, data: &[u8]) -> Result<(), AppError> {
     atomic_write_with_unix_mode(path, data, Some(0o600))
 }
 
+/// 原子写入并沿用目标文件已有的 Unix 权限；目标不存在时使用默认权限。
+///
+/// 用于用户自己会编辑、且可能被外部工具收紧过权限的文件（例如 DSH 的
+/// `cordis.patch.yml`）：rename 会换掉 inode，不显式带上原权限就会把 0600 放宽。
+pub fn atomic_write_preserving_mode(path: &Path, data: &[u8]) -> Result<(), AppError> {
+    #[cfg(unix)]
+    let mode = {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::metadata(path)
+            .ok()
+            .map(|meta| meta.permissions().mode() & 0o777)
+    };
+    #[cfg(not(unix))]
+    let mode: Option<u32> = None;
+    atomic_write_with_unix_mode(path, data, mode)
+}
+
 fn atomic_write_with_unix_mode(
     path: &Path,
     data: &[u8],

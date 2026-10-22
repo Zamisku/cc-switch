@@ -15,6 +15,9 @@ mod commands;
 mod config;
 mod database;
 mod deeplink;
+mod dsh_config;
+#[cfg(test)]
+mod dsh_smoke_tests;
 mod error;
 mod gemini_config;
 mod gemini_mcp;
@@ -955,6 +958,13 @@ pub fn run() {
                 Ok(_) => log::debug!("○ No OpenClaw provider changes from live config"),
                 Err(e) => log::warn!("✗ Failed to import OpenClaw providers: {e}"),
             }
+            match crate::services::provider::import_dsh_providers_from_live(&app_state) {
+                Ok(count) if count > 0 => {
+                    log::info!("✓ Synced {count} DSH provider(s) from profile patch");
+                }
+                Ok(_) => log::debug!("○ No DSH provider changes from profile patch"),
+                Err(e) => log::warn!("✗ Failed to import DSH providers: {e}"),
+            }
             match crate::services::provider::import_hermes_providers_from_live(&app_state) {
                 Ok(count) if count > 0 => {
                     log::info!("✓ Synced {count} Hermes provider(s) from live config");
@@ -1833,6 +1843,8 @@ pub fn run() {
             commands::get_openclaw_tools,
             commands::set_openclaw_tools,
             // Hermes specific
+            commands::import_dsh_providers_from_live,
+            commands::get_dsh_home,
             commands::import_hermes_providers_from_live,
             commands::get_hermes_live_provider_ids,
             commands::get_hermes_live_provider,

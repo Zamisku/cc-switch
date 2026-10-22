@@ -129,6 +129,19 @@ impl McpService {
                 }
             }
 
+            // DSH：启用过的行删掉；只是取消过勾选的，清理我们自己建的 `mcp-ccs-*` 行。
+            let dsh_cleanup = if server.apps.dsh {
+                mcp::dsh::remove(id)
+            } else {
+                crate::dsh_config::remove_owned_mcp_server(
+                    &crate::dsh_config::DshPaths::resolve(),
+                    id,
+                )
+            };
+            if let Err(err) = dsh_cleanup {
+                log::warn!("清理 DSH 中 MCP 服务器 '{id}' 失败: {err}");
+            }
+
             // 从所有应用的 live 配置中移除
             Self::remove_server_from_all_apps(state, id, &server)?;
             Ok(true)
@@ -159,6 +172,31 @@ impl McpService {
         app: AppType,
         enabled: bool,
     ) -> Result<(), AppError> {
+        if matches!(app, AppType::Dsh) {
+            if let Some(server) = state.db.get_all_mcp_servers()?.get(server_id) {
+                let spec = enabled.then_some(&server.server);
+                // 先写 profile，再翻数据库：取消勾选只写 `disabled: true`，配置留着；
+                // 写入失败时数据库仍是旧状态，重试即可。
+                mcp::dsh::sync(server_id, spec)?;
+                if let Err(error) = state
+                    .db
+                    .update_mcp_server_app_enabled(server_id, &app, enabled)
+                {
+                    let rollback = if enabled {
+                        mcp::dsh::remove(server_id)
+                    } else {
+                        mcp::dsh::sync(server_id, Some(&server.server))
+                    };
+                    if let Err(rollback_error) = rollback {
+                        log::warn!(
+                            "Failed to roll back DSH MCP row for '{server_id}' after DB error: {rollback_error}"
+                        );
+                    }
+                    return Err(error);
+                }
+            }
+            return Ok(());
+        }
         if matches!(app, AppType::Mcode | AppType::Pi | AppType::Agy) {
             if let Some(server) = state.db.get_all_mcp_servers()?.get(server_id) {
                 let spec = enabled.then_some(&server.server);
@@ -261,6 +299,7 @@ impl McpService {
             AppType::Mcode => mcp::mcode::sync(&server.id, Some(&server.server))?,
             AppType::Pi => mcp::pi::sync(&server.id, Some(&server.server))?,
             AppType::Agy => mcp::agy::sync(&server.id, Some(&server.server))?,
+            AppType::Dsh => mcp::dsh::sync(&server.id, Some(&server.server))?,
         }
         Ok(())
     }
@@ -303,6 +342,7 @@ impl McpService {
             AppType::Mcode => mcp::mcode::sync(id, None)?,
             AppType::Pi => mcp::pi::sync(id, None)?,
             AppType::Agy => mcp::agy::sync(id, None)?,
+            AppType::Dsh => mcp::dsh::remove(id)?,
         }
         Ok(())
     }
@@ -702,6 +742,31 @@ impl McpService {
         Ok(new_count)
     }
 
+    pub fn import_from_dsh(state: &AppState) -> Result<usize, AppError> {
+        let mut temp_config = crate::app_config::MultiAppConfig::default();
+        let count = mcp::dsh::import_from_dsh(&mut temp_config)?;
+
+        let mut new_count = 0;
+        if count > 0 {
+            if let Some(servers) = &temp_config.mcp.servers {
+                let mut existing = state.db.get_all_mcp_servers()?;
+                for server in servers.values() {
+                    let to_save = if let Some(existing_server) = existing.get(&server.id) {
+                        let mut merged = existing_server.clone();
+                        merged.apps.dsh = server.apps.dsh;
+                        merged
+                    } else {
+                        new_count += 1;
+                        server.clone()
+                    };
+                    state.db.save_mcp_server(&to_save)?;
+                    existing.insert(to_save.id.clone(), to_save.clone());
+                }
+            }
+        }
+        Ok(new_count)
+    }
+
     /// 从所有支持 MCP 的应用导入服务器，返回新导入的数量。
     ///
     /// Best-effort：单个应用导入失败（如坏 config.toml）不阻断其余应用；
@@ -712,7 +777,7 @@ impl McpService {
         let mut total = 0;
         let mut failures: Vec<String> = Vec::new();
 
-        let results: [(&str, Result<usize, AppError>); 9] = [
+        let results: [(&str, Result<usize, AppError>); 10] = [
             ("claude", Self::import_from_claude(state)),
             ("codex", Self::import_from_codex(state)),
             ("gemini", Self::import_from_gemini(state)),
@@ -722,6 +787,7 @@ impl McpService {
             ("mcode", mcp::mcode::import(state)),
             ("agy", mcp::agy::import(state)),
             ("pi", mcp::pi::import(state)),
+            ("dsh", Self::import_from_dsh(state)),
         ];
         for (app, result) in results {
             match result {

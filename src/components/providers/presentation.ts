@@ -860,6 +860,16 @@ export function buildAdditiveSections(input: AdditiveInput): ProviderSection[] {
       }
     }
 
+    // DSH 的「当前供应商」就是 profile 里的默认模型指针：已添加的路由再点一次
+    // 「启用」= 把它设回默认模型（后端 switch 会同时重写 agent-default-model）。
+    if (app === "dsh") {
+      buttons.push({
+        key: "use",
+        label: t("providerCard.action.enable"),
+        onClick: () => actions.add(p),
+      });
+    }
+
     buttons.push({
       key: "remove",
       label: t("providerCard.action.remove"),

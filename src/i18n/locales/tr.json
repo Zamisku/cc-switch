@@ -4769,5 +4769,40 @@
       "refresh": "Kotayı yenile",
       "refreshAria": "{{login}} için kotayı yenileyin"
     }
+  },
+  "dsh": {
+    "form": {
+      "storageHint": "DeepSeek Harness profil dosyasına (cordis.patch.yml) ve .credentials.yaml dosyasına yazılır. DSH profili otomatik yeniden yükler; yeniden başlatma gerekmez.",
+      "kind": "Rota türü",
+      "kindCustom": "Üçüncü taraf uç nokta (llm-pi-ai)",
+      "kindOfficial": "DeepSeek resmî (llm-deepseek)",
+      "route": "Rota adı",
+      "routeHint": "Küçük harfle başlamalı; yalnızca küçük harf, rakam ve tek tire, örn. my-gateway.",
+      "routeInvalid": "Geçersiz rota: küçük harfle başlamalı ve yalnızca küçük harf, rakam ile tek tire içermeli.",
+      "api": "Protokol",
+      "apiHint": "Uç noktanın gerçekten konuştuğu protokolü seçin; Anthropic uyumlu ağ geçitleri anthropic-messages kullanır.",
+      "baseUrl": "Uç nokta",
+      "baseUrlPlaceholder": "https://api.example.com",
+      "baseUrlHint": "Yalnızca kök adres; sorgu dizesi veya gömülü kimlik bilgisi olmadan.",
+      "baseUrlInvalid": "Uç nokta http(s) kök adresi olmalı; sorgu dizesi veya gömülü kimlik bilgisi içeremez.",
+      "apiKey": "API Key",
+      "apiKeyHint": "$DSH_HOME/.credentials.yaml (0600) içine yazılır; DSH ayarlar sayfası bu rotayı yapılandırılmış gösterir.",
+      "models": "Modeller",
+      "addModel": "Model ekle",
+      "removeModel": "Modeli kaldır",
+      "modelIndex": "Model {{index}}",
+      "modelId": "Model kimliği",
+      "modelName": "Görünen ad (isteğe bağlı)",
+      "contextWindow": "Bağlam penceresi (isteğe bağlı)",
+      "maxTokens": "Maksimum çıktı (isteğe bağlı)",
+      "modelsEmpty": "DSH model seçicide görünmesi için en az bir model kimliği girin.",
+      "reasoningEffort": "Düşünme düzeyi",
+      "reasoningEffortHint": "Varsayılan modelin reasoningEffort değeri olarak profile yazılır."
+    },
+    "preset": {
+      "official": "DeepSeek resmî",
+      "anthropicCompatible": "Anthropic uyumlu ağ geçidi",
+      "openaiCompatible": "OpenAI uyumlu ağ geçidi"
+    }
   }
 }

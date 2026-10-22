@@ -38,8 +38,8 @@ use crate::store::AppState;
 
 // Re-export sub-module functions for external access
 pub use live::{
-    import_default_config, import_hermes_providers_from_live, import_openclaw_providers_from_live,
-    import_opencode_providers_from_live, read_live_settings,
+    import_default_config, import_dsh_providers_from_live, import_hermes_providers_from_live,
+    import_openclaw_providers_from_live, import_opencode_providers_from_live, read_live_settings,
     should_import_default_config_on_startup, sync_current_to_live,
 };
 
@@ -6456,6 +6456,17 @@ impl ProviderService {
                     AppType::OpenClaw => remove_openclaw_provider_from_live(id)?,
                     AppType::Hermes => remove_hermes_provider_from_live(id)?,
                     AppType::Mcode => crate::mcode_config::remove_provider(id)?,
+                    AppType::Dsh => {
+                        if let Some(provider) = existing.as_ref() {
+                            let warnings = crate::dsh_config::remove_provider_route(
+                                &crate::dsh_config::DshPaths::resolve(),
+                                provider,
+                            )?;
+                            for warning in warnings {
+                                log::warn!("DSH provider '{id}': {warning}");
+                            }
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -6536,6 +6547,19 @@ impl ProviderService {
                 remove_hermes_provider_from_live(id)?;
             }
             AppType::Mcode => crate::mcode_config::remove_provider(id)?,
+            AppType::Dsh => {
+                let provider = state
+                    .db
+                    .get_provider_by_id(id, app_type.as_str())?
+                    .ok_or_else(|| AppError::Message(format!("供应商 {id} 不存在")))?;
+                let warnings = crate::dsh_config::remove_provider_route(
+                    &crate::dsh_config::DshPaths::resolve(),
+                    &provider,
+                )?;
+                for warning in warnings {
+                    log::warn!("DSH provider '{id}': {warning}");
+                }
+            }
             _ => {
                 return Err(AppError::Message(format!(
                     "App {} does not support remove from live config",
@@ -6734,7 +6758,15 @@ impl ProviderService {
         }
 
         // 写 live（Claude Desktop、累加式应用；切换式应用在上面各自的分支里写完了）。
-        write_live_for_state(state, &app_type, provider)?;
+        if matches!(app_type, AppType::Dsh) {
+            // DSH 的「当前供应商」是 profile 里的默认模型指针，必须和路由行一起写。
+            let outcome =
+                crate::dsh_config::switch_to(&crate::dsh_config::DshPaths::resolve(), provider)?;
+            log::info!("[DSH] default model -> {}/{}", outcome.route, outcome.model);
+            result.warnings.extend(outcome.warnings);
+        } else {
+            write_live_for_state(state, &app_type, provider)?;
+        }
 
         // Hermes is additive, so "switching" doesn't overwrite a live config file
         // — we instead update the top-level `model:` section to point at this
@@ -7034,7 +7066,7 @@ impl ProviderService {
             AppType::OpenCode => Self::extract_opencode_common_config(&provider.settings_config),
             AppType::OpenClaw => Self::extract_openclaw_common_config(&provider.settings_config),
             AppType::Hermes => Ok(String::new()), // Hermes doesn't use common config snippets
-            AppType::Pi | AppType::Mcode | AppType::Agy => Ok(String::new()),
+            AppType::Pi | AppType::Mcode | AppType::Agy | AppType::Dsh => Ok(String::new()),
         }
     }
 
@@ -7052,7 +7084,7 @@ impl ProviderService {
             AppType::OpenCode => Self::extract_opencode_common_config(settings_config),
             AppType::OpenClaw => Self::extract_openclaw_common_config(settings_config),
             AppType::Hermes => Ok(String::new()), // Hermes doesn't use common config snippets
-            AppType::Pi | AppType::Mcode | AppType::Agy => Ok(String::new()),
+            AppType::Pi | AppType::Mcode | AppType::Agy | AppType::Dsh => Ok(String::new()),
         }
     }
 
@@ -7824,6 +7856,11 @@ impl ProviderService {
             AppType::Pi => {
                 crate::pi_config::validate_provider_node(&provider.id, &provider.settings_config)?;
             }
+            AppType::Dsh => {
+                // The DSH row is a route definition: validate it before it reaches the
+                // profile patch, so a bad route/base URL never becomes a saved provider.
+                crate::dsh_config::route_from_provider(provider)?;
+            }
         }
 
         // Validate and clean UsageScript configuration (common for all app types)
@@ -8020,6 +8057,21 @@ impl ProviderService {
                     .unwrap_or("")
                     .to_string();
 
+                Ok((api_key, base_url))
+            }
+            AppType::Dsh => {
+                let api_key = provider
+                    .settings_config
+                    .get("apiKey")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default()
+                    .to_string();
+                let base_url = provider
+                    .settings_config
+                    .get("baseURL")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default()
+                    .to_string();
                 Ok((api_key, base_url))
             }
             AppType::OpenClaw | AppType::Hermes | AppType::Pi | AppType::Mcode => {

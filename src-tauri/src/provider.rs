@@ -235,6 +235,12 @@ impl Provider {
                     str_at(options.and_then(|o| o.get("apiKey"))),
                 )
             }
+            // DSH keeps the endpoint and key in its own provider row shape; the key is
+            // also mirrored into `$DSH_HOME/.credentials.yaml` on switch.
+            AppType::Dsh => (
+                str_at(settings.get("baseURL")),
+                str_at(settings.get("apiKey")),
+            ),
             // Claude and Claude Desktop both use the Anthropic-style env map, keeping
             // the OpenRouter/Google key fallbacks the JS-script path relies on.
             // Listed explicitly (not `_`) so a new AppType fails to compile here.

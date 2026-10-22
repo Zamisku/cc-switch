@@ -4909,5 +4909,40 @@
       "switched": "已切换，新开的 agy 会使用这个账号。",
       "switchedWhileRunning": "已切换。检测到 agy 正在运行：已打开的 agy 仍用原账号，还可能把原账号写回去，请退出后重新打开。"
     }
+  },
+  "dsh": {
+    "form": {
+      "storageHint": "保存后会写入 DeepSeek Harness 的 profile 配置（cordis.patch.yml）和 .credentials.yaml；DSH 会自动热加载，不用重启。",
+      "kind": "路由类型",
+      "kindCustom": "第三方端点（llm-pi-ai）",
+      "kindOfficial": "DeepSeek 官方（llm-deepseek）",
+      "route": "路由名",
+      "routeHint": "小写字母开头，可含数字与单个连字符，例如 my-gateway。",
+      "routeInvalid": "路由名不合法：需要小写字母开头，只含小写字母、数字与单个连字符。",
+      "api": "协议",
+      "apiHint": "按端点实际支持的协议选择；Anthropic 兼容端点选 anthropic-messages。",
+      "baseUrl": "端点地址",
+      "baseUrlPlaceholder": "https://api.example.com",
+      "baseUrlHint": "只填根地址，不要带查询串或内嵌凭据。",
+      "baseUrlInvalid": "端点必须是 http(s) 根地址，不能带查询串或内嵌凭据。",
+      "apiKey": "API Key",
+      "apiKeyHint": "保存后写入 $DSH_HOME/.credentials.yaml（0600），DSH 设置页会把这条路由显示为已配置。",
+      "models": "模型",
+      "addModel": "添加模型",
+      "removeModel": "删除模型",
+      "modelIndex": "模型 {{index}}",
+      "modelId": "模型 ID",
+      "modelName": "显示名（可选）",
+      "contextWindow": "上下文窗口（可选）",
+      "maxTokens": "最大输出（可选）",
+      "modelsEmpty": "至少填一个模型 ID，DSH 的模型选择器才有可选项。",
+      "reasoningEffort": "思考强度",
+      "reasoningEffortHint": "作为默认模型的 reasoningEffort 写进 profile。"
+    },
+    "preset": {
+      "official": "DeepSeek 官方",
+      "anthropicCompatible": "Anthropic 兼容网关",
+      "openaiCompatible": "OpenAI 兼容网关"
+    }
   }
 }

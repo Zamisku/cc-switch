@@ -28,6 +28,7 @@ export const APP_IDS: AppId[] = [
   "pi",
   "mcode",
   "agy",
+  "dsh",
 ];
 
 export const DEFAULT_VISIBLE_APPS: VisibleApps = {
@@ -42,6 +43,7 @@ export const DEFAULT_VISIBLE_APPS: VisibleApps = {
   pi: true,
   mcode: true,
   agy: true,
+  dsh: true,
 };
 
 /** App IDs shown in Skills panels. */
@@ -55,6 +57,7 @@ export const SKILLS_APP_IDS: AppId[] = [
   "pi",
   "mcode",
   "agy",
+  "dsh",
 ];
 
 export type ProxyAppId = Extract<
@@ -104,7 +107,7 @@ export function isStackAppId(appId: string): appId is StackAppId {
 
 export type AdditiveAppId = Extract<
   AppId,
-  "opencode" | "openclaw" | "hermes" | "pi" | "mcode"
+  "opencode" | "openclaw" | "hermes" | "pi" | "mcode" | "dsh"
 >;
 
 export const ADDITIVE_APP_IDS: AdditiveAppId[] = [
@@ -113,6 +116,7 @@ export const ADDITIVE_APP_IDS: AdditiveAppId[] = [
   "openclaw",
   "hermes",
   "pi",
+  "dsh",
 ];
 
 export function isAdditiveAppId(appId: string): appId is AdditiveAppId {
@@ -146,6 +150,7 @@ export const MCP_APP_IDS: McpAppId[] = [
   "pi",
   "mcode",
   "agy",
+  "dsh",
 ];
 
 export function isMcpAppId(appId: string): appId is McpAppId {
@@ -271,6 +276,14 @@ export const APP_ICON_MAP: Record<AppId, AppConfig> = {
       "bg-sky-500/10 ring-1 ring-sky-500/20 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300",
     badgeClass:
       "bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20 border-0 gap-1.5",
+  },
+  dsh: {
+    label: "DeepSeek Harness",
+    icon: <ProviderIcon icon="deepseek" name="DeepSeek Harness" size={14} />,
+    activeClass:
+      "bg-blue-600/10 ring-1 ring-blue-600/20 hover:bg-blue-600/20 text-blue-700 dark:text-blue-300",
+    badgeClass:
+      "bg-blue-600/10 text-blue-700 dark:text-blue-300 hover:bg-blue-600/20 border-0 gap-1.5",
   },
 };
 

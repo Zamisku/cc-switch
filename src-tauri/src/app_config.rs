@@ -25,6 +25,8 @@ pub struct McpApps {
     pub hermes: bool,
     #[serde(default)]
     pub pi: bool,
+    #[serde(default)]
+    pub dsh: bool,
 }
 
 impl McpApps {
@@ -42,6 +44,7 @@ impl McpApps {
             AppType::Pi => self.pi,
             AppType::ClaudeDesktop => false,
             AppType::Agy => self.agy,
+            AppType::Dsh => self.dsh,
         }
     }
 
@@ -59,6 +62,7 @@ impl McpApps {
             AppType::Pi => self.pi = enabled,
             AppType::ClaudeDesktop => {}
             AppType::Agy => self.agy = enabled,
+            AppType::Dsh => self.dsh = enabled,
         }
     }
 
@@ -92,6 +96,9 @@ impl McpApps {
         if self.pi {
             apps.push(AppType::Pi);
         }
+        if self.dsh {
+            apps.push(AppType::Dsh);
+        }
         apps
     }
 
@@ -106,6 +113,7 @@ impl McpApps {
             && !self.agy
             && !self.mcode
             && !self.pi
+            && !self.dsh
     }
 }
 
@@ -130,6 +138,8 @@ pub struct SkillApps {
     pub hermes: bool,
     #[serde(default)]
     pub pi: bool,
+    #[serde(default)]
+    pub dsh: bool,
 }
 
 impl SkillApps {
@@ -147,6 +157,7 @@ impl SkillApps {
             AppType::OpenClaw => false,
             AppType::Agy => self.agy,
             AppType::ClaudeDesktop => false,
+            AppType::Dsh => self.dsh,
         }
     }
 
@@ -164,6 +175,7 @@ impl SkillApps {
             AppType::OpenClaw => {}
             AppType::Agy => self.agy = enabled,
             AppType::ClaudeDesktop => {} // Claude Desktop 3P profiles don't use CC Switch skill sync
+            AppType::Dsh => self.dsh = enabled,
         }
     }
 
@@ -197,6 +209,9 @@ impl SkillApps {
         if self.pi {
             apps.push(AppType::Pi);
         }
+        if self.dsh {
+            apps.push(AppType::Dsh);
+        }
         apps
     }
 
@@ -211,6 +226,7 @@ impl SkillApps {
             && !self.agy
             && !self.mcode
             && !self.pi
+            && !self.dsh
     }
 
     /// 仅启用指定应用（其他应用设为禁用）
@@ -432,6 +448,7 @@ pub enum AppType {
     Pi,
     Mcode,
     Agy,
+    Dsh,
 }
 
 impl AppType {
@@ -448,6 +465,7 @@ impl AppType {
             AppType::Pi => "pi",
             AppType::Mcode => "mcode",
             AppType::Agy => "agy",
+            AppType::Dsh => "dsh",
         }
     }
 
@@ -459,7 +477,12 @@ impl AppType {
     pub fn is_additive_mode(&self) -> bool {
         matches!(
             self,
-            AppType::OpenCode | AppType::OpenClaw | AppType::Hermes | AppType::Pi | AppType::Mcode
+            AppType::OpenCode
+                | AppType::OpenClaw
+                | AppType::Hermes
+                | AppType::Pi
+                | AppType::Mcode
+                | AppType::Dsh
         )
     }
 
@@ -491,6 +514,7 @@ impl AppType {
             AppType::Pi,
             AppType::Mcode,
             AppType::Agy,
+            AppType::Dsh,
         ]
         .into_iter()
     }
@@ -513,10 +537,11 @@ impl FromStr for AppType {
             "pi" => Ok(AppType::Pi),
             "mcode" => Ok(AppType::Mcode),
             "agy" | "antigravity" | "antigravity-cli" => Ok(AppType::Agy),
+            "dsh" | "deepseek-harness" | "deepseek_harness" | "dsh-desktop" => Ok(AppType::Dsh),
             other => Err(AppError::localized(
                 "unsupported_app",
-                format!("不支持的应用标识: '{other}'。可选值: claude, claude-desktop, codex, gemini, grokbuild, opencode, openclaw, hermes, pi, mcode, agy。"),
-                format!("Unsupported app id: '{other}'. Allowed: claude, claude-desktop, codex, gemini, grokbuild, opencode, openclaw, hermes, pi, mcode, agy."),
+                format!("不支持的应用标识: '{other}'。可选值: claude, claude-desktop, codex, gemini, grokbuild, opencode, openclaw, hermes, pi, mcode, agy, dsh。"),
+                format!("Unsupported app id: '{other}'. Allowed: claude, claude-desktop, codex, gemini, grokbuild, opencode, openclaw, hermes, pi, mcode, agy, dsh."),
             )),
         }
     }
@@ -556,7 +581,7 @@ impl CommonConfigSnippets {
             AppType::OpenCode => self.opencode.as_ref(),
             AppType::OpenClaw => self.openclaw.as_ref(),
             AppType::Hermes => self.hermes.as_ref(),
-            AppType::Pi | AppType::Mcode | AppType::Agy => None,
+            AppType::Pi | AppType::Mcode | AppType::Agy | AppType::Dsh => None,
         }
     }
 
@@ -571,7 +596,7 @@ impl CommonConfigSnippets {
             AppType::OpenCode => self.opencode = snippet,
             AppType::OpenClaw => self.openclaw = snippet,
             AppType::Hermes => self.hermes = snippet,
-            AppType::Pi | AppType::Mcode | AppType::Agy => {}
+            AppType::Pi | AppType::Mcode | AppType::Agy | AppType::Dsh => {}
         }
     }
 }
@@ -617,6 +642,7 @@ impl Default for MultiAppConfig {
         apps.insert("openclaw".to_string(), ProviderManager::default());
         apps.insert("hermes".to_string(), ProviderManager::default());
         apps.insert("agy".to_string(), ProviderManager::default());
+        apps.insert("dsh".to_string(), ProviderManager::default());
 
         Self {
             version: 2,
@@ -898,7 +924,7 @@ impl MultiAppConfig {
             AppType::Hermes => &mut config.prompts.hermes.prompts,
             // Pi was added after prompts moved to SQLite. Keeping it out of
             // this legacy config avoids a second, unused prompt state.
-            AppType::Pi | AppType::Mcode | AppType::Agy => return Ok(false),
+            AppType::Pi | AppType::Mcode | AppType::Agy | AppType::Dsh => return Ok(false),
         };
 
         prompts.insert(id, prompt);
@@ -942,7 +968,7 @@ impl MultiAppConfig {
                 AppType::OpenCode => &self.mcp.opencode.servers,
                 AppType::OpenClaw => continue, // OpenClaw MCP is still in development, skip
                 AppType::Hermes => continue,   // Hermes didn't exist in v3.6.x, skip
-                AppType::Pi | AppType::Mcode | AppType::Agy => continue, // Pi didn't exist in v3.6.x, skip
+                AppType::Pi | AppType::Mcode | AppType::Agy | AppType::Dsh => continue,
             };
 
             for (id, entry) in old_servers {

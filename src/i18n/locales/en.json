@@ -4909,5 +4909,40 @@
       "switched": "Switched. New agy sessions will use this account.",
       "switchedWhileRunning": "Switched. agy is running: open agy sessions keep using the previous account and may write it back. Quit agy and open it again."
     }
+  },
+  "dsh": {
+    "form": {
+      "storageHint": "Saved into the DeepSeek Harness profile (cordis.patch.yml) and .credentials.yaml. DSH hot-reloads the profile; no restart needed.",
+      "kind": "Route type",
+      "kindCustom": "Third-party endpoint (llm-pi-ai)",
+      "kindOfficial": "DeepSeek official (llm-deepseek)",
+      "route": "Route name",
+      "routeHint": "Start with a lowercase letter; letters, digits, and single hyphens only, e.g. my-gateway.",
+      "routeInvalid": "Invalid route: it must start with a lowercase letter and contain only lowercase letters, digits, and single hyphens.",
+      "api": "Protocol",
+      "apiHint": "Pick the protocol the endpoint actually speaks; Anthropic-compatible gateways use anthropic-messages.",
+      "baseUrl": "Endpoint",
+      "baseUrlPlaceholder": "https://api.example.com",
+      "baseUrlHint": "Root URL only; no query string or embedded credentials.",
+      "baseUrlInvalid": "The endpoint must be an http(s) root URL without query strings or embedded credentials.",
+      "apiKey": "API Key",
+      "apiKeyHint": "Stored in $DSH_HOME/.credentials.yaml (0600); the DSH settings page shows this route as configured.",
+      "models": "Models",
+      "addModel": "Add model",
+      "removeModel": "Remove model",
+      "modelIndex": "Model {{index}}",
+      "modelId": "Model ID",
+      "modelName": "Display name (optional)",
+      "contextWindow": "Context window (optional)",
+      "maxTokens": "Max output (optional)",
+      "modelsEmpty": "Add at least one model ID so DSH's model picker has an entry.",
+      "reasoningEffort": "Reasoning effort",
+      "reasoningEffortHint": "Written into the profile as the default model's reasoningEffort."
+    },
+    "preset": {
+      "official": "DeepSeek official",
+      "anthropicCompatible": "Anthropic-compatible gateway",
+      "openaiCompatible": "OpenAI-compatible gateway"
+    }
   }
 }

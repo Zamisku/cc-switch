@@ -339,6 +339,7 @@ describe("UsageDashboard", () => {
         pi: false,
         mcode: false,
         agy: false,
+        dsh: false,
       },
     });
     renderDashboard({ initialAppType: "gemini" });
