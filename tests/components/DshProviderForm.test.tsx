@@ -2,6 +2,11 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const fetchModelsForConfig = vi.fn();
+vi.mock("@/lib/api/model-fetch", () => ({
+  fetchModelsForConfig: (...args: unknown[]) => fetchModelsForConfig(...args),
+}));
+
 import { DshProviderForm } from "@/components/providers/forms/DshProviderForm";
 import { renderWithQueryClient as render } from "../utils/testQueryClient";
 
@@ -111,6 +116,45 @@ describe("DshProviderForm", () => {
       reasoningEffort: "low",
       models: [{ id: "gpt-5", name: "GPT-5" }],
     });
+  });
+
+  it("fetches models from the endpoint and adds new ids", async () => {
+    const user = userEvent.setup();
+    fetchModelsForConfig.mockReset().mockResolvedValue([
+      { id: "mock-sonnet", ownedBy: null },
+      { id: "mock-haiku", ownedBy: null },
+    ]);
+    renderForm(vi.fn(), {
+      name: "Local",
+      settingsConfig: {
+        kind: "custom",
+        route: "local",
+        api: "anthropic-messages",
+        baseURL: "http://127.0.0.1:8787",
+        apiKey: "sk-test",
+        models: [{ id: "mock-sonnet" }],
+      },
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "dsh.form.fetchModels" }),
+    );
+
+    expect(fetchModelsForConfig).toHaveBeenCalledWith(
+      "http://127.0.0.1:8787",
+      "sk-test",
+      false,
+      undefined,
+      undefined,
+      { apiFormat: "anthropic-messages" },
+    );
+    await waitFor(() =>
+      expect(screen.getAllByLabelText("dsh.form.modelId")).toHaveLength(2),
+    );
+    expect(
+      (screen.getAllByLabelText("dsh.form.modelId")[1] as HTMLInputElement)
+        .value,
+    ).toBe("mock-haiku");
   });
 
   it("rejects a route that DSH would not accept", async () => {

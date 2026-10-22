@@ -4937,7 +4937,12 @@
       "maxTokens": "Max output (optional)",
       "modelsEmpty": "Add at least one model ID so DSH's model picker has an entry.",
       "reasoningEffort": "Reasoning effort",
-      "reasoningEffortHint": "Written into the profile as the default model's reasoningEffort."
+      "reasoningEffortHint": "Written into the profile as the default model's reasoningEffort.",
+      "fetchModels": "Fetch models",
+      "fetchingModels": "Fetching…",
+      "fetchModelsSuccess": "Added {{count}} model(s)",
+      "fetchModelsFailed": "Could not fetch the model list; check the endpoint and key",
+      "noNewModels": "No new models found"
     },
     "preset": {
       "official": "DeepSeek official",

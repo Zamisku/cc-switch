@@ -4937,7 +4937,12 @@
       "maxTokens": "最大出力（任意）",
       "modelsEmpty": "DSH のモデル選択に出すため、モデル ID を 1 つ以上入力してください。",
       "reasoningEffort": "推論の強さ",
-      "reasoningEffortHint": "既定モデルの reasoningEffort として profile に書き込まれます。"
+      "reasoningEffortHint": "既定モデルの reasoningEffort として profile に書き込まれます。",
+      "fetchModels": "モデルを取得",
+      "fetchingModels": "取得中…",
+      "fetchModelsSuccess": "{{count}} 件のモデルを追加しました",
+      "fetchModelsFailed": "モデル一覧を取得できません。端点とキーを確認してください",
+      "noNewModels": "新しいモデルはありません"
     },
     "preset": {
       "official": "DeepSeek 公式",

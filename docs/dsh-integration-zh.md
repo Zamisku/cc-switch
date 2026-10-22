@@ -583,7 +583,7 @@ M1–M4 已按本方案实现（供应商、MCP、会话、Skills），只剩 M5
 | 校验 | 后端 `route_from_provider` 在入库前校验 route / baseURL / 协议 / 模型 / 凭据引用；前端表单同规则即时提示 |
 | 回滚 | 写 patch 或凭据任一步失败，两份文件都恢复到写前快照 |
 | 清理 | 删掉最后一条托管路由后，只剩空 `providers` 的自建行与用户覆盖层的默认指针一并移除，profile 回到 bundle 默认状态 |
-| 前端表单 | `DshProviderForm.tsx`：路由类型、路由名、协议、端点、Key、模型列表、思考强度；预设 `dshProviderPresets.ts`；五语文案 |
+| 前端表单 | `DshProviderForm.tsx`：路由类型、路由名、协议、端点、Key、模型列表（支持从端点拉取模型）、思考强度；预设 `dshProviderPresets.ts`；五语文案 |
 | 设置可见性 | Rust `VisibleApps.dsh` + 前端 `VisibleApps` / `APP_ICON_MAP` / `AppGlyph` / 端点测速超时 / 用量短名 |
 | MCP | `src-tauri/src/mcp/dsh.rs` + `dsh_config` 的行读写：一台服务器一条 `dsh-mcp-client` 行；stdio / Streamable HTTP；开关、删除、导入；`mcp_servers.enabled_dsh`；前端 `MCP_APP_IDS` 与导入来源展示 |
 | 会话 | `session_manager/providers/dsh.rs`：列表读 `storages/session_projcache`（标题、目录、用量、最后活动），正文流式解压 `sessions/**/session.v4.jsonl.zstd`，还原 user / assistant / tool 消息；删除交给 DSH（后端拒绝、前端隐藏） |

@@ -4797,7 +4797,12 @@
       "maxTokens": "Maksimum çıktı (isteğe bağlı)",
       "modelsEmpty": "DSH model seçicide görünmesi için en az bir model kimliği girin.",
       "reasoningEffort": "Düşünme düzeyi",
-      "reasoningEffortHint": "Varsayılan modelin reasoningEffort değeri olarak profile yazılır."
+      "reasoningEffortHint": "Varsayılan modelin reasoningEffort değeri olarak profile yazılır.",
+      "fetchModels": "Modelleri getir",
+      "fetchingModels": "Getiriliyor…",
+      "fetchModelsSuccess": "{{count}} model eklendi",
+      "fetchModelsFailed": "Model listesi alınamadı; uç noktayı ve anahtarı kontrol edin",
+      "noNewModels": "Yeni model bulunamadı"
     },
     "preset": {
       "official": "DeepSeek resmî",

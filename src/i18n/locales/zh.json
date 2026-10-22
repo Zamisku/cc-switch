@@ -4937,7 +4937,12 @@
       "maxTokens": "最大输出（可选）",
       "modelsEmpty": "至少填一个模型 ID，DSH 的模型选择器才有可选项。",
       "reasoningEffort": "思考强度",
-      "reasoningEffortHint": "作为默认模型的 reasoningEffort 写进 profile。"
+      "reasoningEffortHint": "作为默认模型的 reasoningEffort 写进 profile。",
+      "fetchModels": "获取模型",
+      "fetchingModels": "获取中…",
+      "fetchModelsSuccess": "已添加 {{count}} 个模型",
+      "fetchModelsFailed": "获取模型列表失败，检查端点和 Key",
+      "noNewModels": "没有发现新模型"
     },
     "preset": {
       "official": "DeepSeek 官方",

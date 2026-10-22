@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, RefreshCw, Trash2 } from "lucide-react";
+import { toast } from "@/lib/toast";
+import { fetchModelsForConfig } from "@/lib/api/model-fetch";
 
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
@@ -172,6 +174,7 @@ export function DshProviderForm({
   );
   const [presetId, setPresetId] = useState("custom");
   const [routeTouched, setRouteTouched] = useState(isEdit);
+  const [fetchingModels, setFetchingModels] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -259,6 +262,50 @@ export function DshProviderForm({
       iconColor: preset.iconColor ?? "",
       settingsConfig: JSON.stringify(next),
     });
+  };
+
+  const fetchModels = async () => {
+    const baseUrl = config.baseURL.trim();
+    if (!baseUrl || fetchingModels) return;
+    setFetchingModels(true);
+    try {
+      const fetched = await fetchModelsForConfig(
+        baseUrl,
+        config.apiKey.trim(),
+        false,
+        undefined,
+        undefined,
+        {
+          apiFormat:
+            config.kind === "custom" ? config.api : "anthropic-messages",
+        },
+      );
+      const existing = new Set(models.map((model) => model.id.trim()));
+      const additions = fetched
+        .filter((model) => model.id.trim() && !existing.has(model.id.trim()))
+        .map((model) => ({
+          key: nextModelKey(),
+          id: model.id.trim(),
+          name: "",
+          contextWindow: "",
+          maxTokens: "",
+        }));
+      if (additions.length === 0) {
+        toast.info(t("dsh.form.noNewModels"));
+        return;
+      }
+      setConfig((current) => ({
+        ...current,
+        models: [...current.models, ...additions],
+      }));
+      toast.success(
+        t("dsh.form.fetchModelsSuccess", { count: additions.length }),
+      );
+    } catch {
+      toast.error(t("dsh.form.fetchModelsFailed"));
+    } finally {
+      setFetchingModels(false);
+    }
   };
 
   const buildSettingsConfig = (displayName: string) => {
@@ -462,19 +509,35 @@ export function DshProviderForm({
           />
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <Label>{t("dsh.form.models")}</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  update({ models: [...config.models, emptyModel()] })
-                }
-              >
-                <Plus className="me-1 h-4 w-4" />
-                {t("dsh.form.addModel")}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={fetchingModels || !config.baseURL.trim()}
+                  onClick={() => void fetchModels()}
+                >
+                  <RefreshCw
+                    className={`me-1 h-4 w-4 ${fetchingModels ? "animate-spin" : ""}`}
+                  />
+                  {fetchingModels
+                    ? t("dsh.form.fetchingModels")
+                    : t("dsh.form.fetchModels")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    update({ models: [...config.models, emptyModel()] })
+                  }
+                >
+                  <Plus className="me-1 h-4 w-4" />
+                  {t("dsh.form.addModel")}
+                </Button>
+              </div>
             </div>
             {config.models.length === 0 && (
               <p className="text-xs text-muted-foreground">
