@@ -131,4 +131,46 @@ fn roundtrips_a_real_profile_copy() {
     assert!(!std::fs::read_to_string(paths.patch_path())
         .expect("read patch")
         .contains("ccs-smoke-mcp"));
+
+    // 会话与用量：只有副本里带 sessions/ 与 storages/ 时才验证（cp -R ~/.dsh 会带上）。
+    let previous_home = std::env::var_os("DSH_HOME");
+    std::env::set_var("DSH_HOME", paths.root());
+    let sessions = crate::session_manager::providers::dsh::scan_sessions();
+    if let Some(session) = sessions.first() {
+        let path = session.source_path.clone().expect("session source");
+        let messages =
+            crate::session_manager::providers::dsh::load_messages(std::path::Path::new(&path))
+                .expect("read session transcript");
+        assert!(!messages.is_empty(), "session transcript is empty");
+
+        let has_usage = sessions.iter().any(|session| {
+            session.source_path.as_deref().is_some_and(|path| {
+                crate::session_manager::providers::dsh::usage_records(std::path::Path::new(path))
+                    .map(|records| !records.is_empty())
+                    .unwrap_or(false)
+            })
+        });
+
+        let database = crate::database::Database::memory().expect("in-memory database");
+        let usage =
+            crate::services::session_usage_dsh::sync_dsh_usage(&database).expect("sync usage");
+        assert!(usage.files_scanned >= 1);
+        if has_usage {
+            assert!(usage.imported > 0, "usage records found but none imported");
+            let rows: i64 = {
+                let conn = database.conn.lock().expect("database lock");
+                conn.query_row(
+                    "SELECT COUNT(*) FROM proxy_request_logs WHERE app_type = 'dsh'",
+                    [],
+                    |row| row.get(0),
+                )
+                .expect("count usage rows")
+            };
+            assert!(rows > 0, "no DSH usage rows in the database");
+        }
+    }
+    match previous_home {
+        Some(value) => std::env::set_var("DSH_HOME", value),
+        None => std::env::remove_var("DSH_HOME"),
+    }
 }

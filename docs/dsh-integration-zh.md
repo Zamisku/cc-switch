@@ -257,7 +257,7 @@ records:                    # 结构化记录，key 形如 <scope>/<id>
 **不做（首期）**
 
 - 本地代理 / 故障转移 / 路由模式：DSH 是 Electron 单体，接管其出口需要独立数据面适配，不能只靠复用 UI 宣称可用。
-- MCP / Skills / 会话 / 用量：二期（见 4.10）。
+- MCP / Skills / 会话 / 用量：已在后续迭代补齐（见 §7.4–§7.6）。
 - 运行时 gateway 写入：二期增强（见 4.12）。
 
 ### 4.2 数据模型（`settingsConfig`）
@@ -413,7 +413,7 @@ pub fn switch_to(provider: &Provider) -> Result<SwitchOutcome, AppError> {
 
 ### 4.10 二期：会话 / MCP / Skills / 用量
 
-> MCP、会话、Skills 已在本次接入完成，落地细节见 §7.4–§7.6；本节只剩用量聚合等后续项。
+> MCP、会话、Skills、用量均已在本次接入完成，落地细节见 §7.4–§7.6；本节只剩运行时 gateway 写入等后续项。
 
 - **会话**：`~/.dsh/sessions/*.jsonl`（`session-persistence-jsonl`，root = `dshHomePath('sessions')`）。新增 `session_manager/providers/dsh.rs`，只读解析 + 去重，恢复命令交给 DSH 自身（不伪造）。
 - **MCP**：已完成（`mcp::dsh`）。一台服务器一条 `dsh-mcp-client` 行；stdio / Streamable HTTP；`!!js` 行只读。
@@ -588,10 +588,10 @@ M1–M4 已按本方案实现（供应商、MCP、会话、Skills），只剩 M5
 | MCP | `src-tauri/src/mcp/dsh.rs` + `dsh_config` 的行读写：一台服务器一条 `dsh-mcp-client` 行；stdio / Streamable HTTP；开关、删除、导入；`mcp_servers.enabled_dsh`；前端 `MCP_APP_IDS` 与导入来源展示 |
 | 会话 | `session_manager/providers/dsh.rs`：列表读 `storages/session_projcache`（标题、目录、用量、最后活动），正文流式解压 `sessions/**/session.v4.jsonl.zstd`，还原 user / assistant / tool 消息；删除交给 DSH（后端拒绝、前端隐藏） |
 | Skills | `skills.enabled_dsh` + `SkillService` 路径 `$DSH_HOME/skills`（目录 bundle `<name>/SKILL.md` 或平铺 `<name>.md`）；前端 `SKILLS_APP_IDS` 已包含 DSH |
+| 用量 | `services/session_usage_dsh.rs`：从每个 `assistant/message` 的 `usage` 导入 token 与费用，按 `会话 + turn + step` 去重；输入按 fresh input 记，输出含思考 token |
 
 ### 7.2 明确的未实现
 
-- 用量面板：DSH 的 token 统计还没导入到统一用量页（会话正文里能看到消息，但不会进用量聚合）。
 - 本地代理 / 故障转移 / 聚合：`get_adapter` 对 `dsh` 返回 `None`，`supports_local_proxy` 不含它。
 - Deep link：`build_provider_from_request` 对 `dsh` 明确拒绝，提示在 DSH 页面添加。
 - 运行时 gateway 写入（§4.12 的二期）：仍走文件 + HMR。
@@ -606,18 +606,21 @@ cargo test --manifest-path src-tauri/Cargo.toml --lib mcp::dsh -- --test-threads
 # 4 passed：stdio / HTTP 投影、url-only 归一、SSE 拒绝、反向导入
 cargo test --manifest-path src-tauri/Cargo.toml --lib session_manager::providers::dsh -- --test-threads=1
 # 2 passed：压缩事件日志还原、投影缓存扫描与空白会话过滤
+cargo test --manifest-path src-tauri/Cargo.toml --lib session_usage_dsh -- --test-threads=1
+# 2 passed：fresh input 语义、turn+step 去重与保留期墓碑
 
 # 可选：拿一份真实 DSH_HOME 的副本做冒烟（不碰真实账号）
 cp -R ~/.dsh /tmp/dsh-smoke
 CCS_DSH_SMOKE_HOME=/tmp/dsh-smoke \
   cargo test --manifest-path src-tauri/Cargo.toml --lib dsh_smoke -- --ignored --test-threads=1
+# 副本里带 sessions/ 与 storages/ 时，同时验证会话解析与用量导入
 
 # 受影响的集成测试（MCP 开关 / 重同步 / 导入导出）：52 passed
 cargo test --manifest-path src-tauri/Cargo.toml \
   --test mcp_commands --test provider_commands --test provider_service --test import_export_sync
 
 cargo test --manifest-path src-tauri/Cargo.toml --lib -- --test-threads=1
-# 3956 passed / 0 failed / 12 ignored（供应商、MCP、会话、Skills、迁移与全部既有用例）
+# 3959 passed / 0 failed / 12 ignored（供应商、MCP、会话、Skills、用量、迁移与全部既有用例）
 pnpm typecheck                                              # 通过
 pnpm build:renderer                                         # 通过
 npx vitest run                                              # 3162 passed；仅剩基线已有的 3 个失败（UsageDashboard x2、rememberedChoice）
@@ -672,3 +675,4 @@ npx vitest run                                              # 3162 passed；仅�
 - 保存供应商时 Key 留空表示「这次不改」，不会删除已存的 ref；删除供应商且没有其它路由引用同一
   ref 时才清理。
 - 与 DSH 同时写配置时的冲突靠「写前快照 + 原子替换」兜底；跨进程锁（`.lock`）是 M5 的网关路径要补的。
+- 用量只统计带 `usage` 的助手消息；模型不在定价表里时费用记 0（不猜价），历史消息不会因为换供应商而改归属。

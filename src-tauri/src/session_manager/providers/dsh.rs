@@ -321,6 +321,46 @@ fn apply_event(messages: &mut Vec<SessionMessage>, event: &Value, current_turn: 
     }
 }
 
+/// 提取每个 `assistant/message` 的 token 用量，供用量页导入。
+///
+/// DSH 在每条助手消息上记 `usage.{inputTokens,outputTokens,cacheReadTokens,cacheWriteTokens}`，
+/// 输入不含缓存命中（与 agy 的 fresh input 语义一致），输出已含思考 token。
+pub fn usage_records(path: &Path) -> Result<Vec<Value>, String> {
+    let file = fs::File::open(path)
+        .map_err(|error| format!("Cannot read DeepSeek Harness session log: {error}"))?;
+    let decoder = zstd::stream::read::Decoder::new(file)
+        .map_err(|error| format!("Cannot decompress DeepSeek Harness session log: {error}"))?;
+    let mut records = Vec::new();
+    for line in BufReader::new(decoder).lines() {
+        let line =
+            line.map_err(|error| format!("Cannot read DeepSeek Harness session log: {error}"))?;
+        let Ok(event) = serde_json::from_str::<Value>(&line) else {
+            continue;
+        };
+        if event.get("type").and_then(Value::as_str) != Some("assistant/message") {
+            continue;
+        }
+        let data = event.get("data").cloned().unwrap_or(Value::Null);
+        let Some(usage) = data.get("usage") else {
+            continue;
+        };
+        let source = data
+            .get("message")
+            .and_then(|message| message.get("source"))
+            .cloned()
+            .unwrap_or(Value::Null);
+        records.push(serde_json::json!({
+            "turn": data.get("turn"),
+            "step": data.get("step"),
+            "time": event.get("time"),
+            "usage": usage,
+            "provider": source.get("provider"),
+            "model": source.get("model"),
+        }));
+    }
+    Ok(records)
+}
+
 pub fn load_messages(path: &Path) -> Result<Vec<SessionMessage>, String> {
     let file = fs::File::open(path)
         .map_err(|error| format!("Cannot read DeepSeek Harness session log: {error}"))?;
@@ -399,6 +439,31 @@ mod tests {
         assert!(messages[2].blocks.iter().any(
             |block| matches!(block, SessionBlock::ToolResult { call_id, .. } if call_id == "c1")
         ));
+    }
+
+    #[test]
+    fn extracts_usage_from_assistant_messages() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = write_log(
+            dir.path(),
+            &[
+                json!({"type":"assistant/message","seq":2,"time":1002,"data":{
+                    "turn":1,"step":1,
+                    "message":{"role":"assistant","source":{"kind":"model","provider":"deepseek-account","model":"deepseek-flash"},"content":[{"type":"text","text":"hi"}]},
+                    "usage":{"inputTokens":12,"outputTokens":5,"cacheReadTokens":34,"cacheWriteTokens":0}
+                }}),
+                json!({"type":"assistant/message","seq":3,"time":1003,"data":{
+                    "turn":1,"step":2,
+                    "message":{"role":"assistant","content":[{"type":"text","text":"no usage"}]}
+                }}),
+            ],
+        );
+        let records = usage_records(&path).expect("usage records");
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0]["usage"]["inputTokens"], 12);
+        assert_eq!(records[0]["usage"]["cacheReadTokens"], 34);
+        assert_eq!(records[0]["model"], "deepseek-flash");
+        assert_eq!(records[0]["provider"], "deepseek-account");
     }
 
     #[test]
