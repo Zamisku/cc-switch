@@ -589,11 +589,11 @@ M1–M4 已按本方案实现（供应商、MCP、会话、Skills），只剩 M5
 | 会话 | `session_manager/providers/dsh.rs`：列表读 `storages/session_projcache`（标题、目录、用量、最后活动），正文流式解压 `sessions/**/session.v4.jsonl.zstd`，还原 user / assistant / tool 消息；删除交给 DSH（后端拒绝、前端隐藏） |
 | Skills | `skills.enabled_dsh` + `SkillService` 路径 `$DSH_HOME/skills`（目录 bundle `<name>/SKILL.md` 或平铺 `<name>.md`）；前端 `SKILLS_APP_IDS` 已包含 DSH |
 | 用量 | `services/session_usage_dsh.rs`：从每个 `assistant/message` 的 `usage` 导入 token 与费用，按 `会话 + turn + step` 去重；输入按 fresh input 记，输出含思考 token |
+| Deep link | `ccswitch://…resource=provider&app=dsh`：从链接的 name/endpoint/apiKey/model/apiFormat 生成第三方路由行；缺模型或缺端点直接拒绝 |
 
 ### 7.2 明确的未实现
 
 - 本地代理 / 故障转移 / 聚合：`get_adapter` 对 `dsh` 返回 `None`，`supports_local_proxy` 不含它。
-- Deep link：`build_provider_from_request` 对 `dsh` 明确拒绝，提示在 DSH 页面添加。
 - 运行时 gateway 写入（§4.12 的二期）：仍走文件 + HMR。
 
 ### 7.3 验证
@@ -608,6 +608,8 @@ cargo test --manifest-path src-tauri/Cargo.toml --lib session_manager::providers
 # 2 passed：压缩事件日志还原、投影缓存扫描与空白会话过滤
 cargo test --manifest-path src-tauri/Cargo.toml --lib session_usage_dsh -- --test-threads=1
 # 2 passed：fresh input 语义、turn+step 去重与保留期墓碑
+cargo test --manifest-path src-tauri/Cargo.toml --lib deeplink::tests -- --test-threads=1
+# 80 passed：含 DSH 深链接的协议/端点/模型校验
 
 # 可选：拿一份真实 DSH_HOME 的副本做冒烟（不碰真实账号）
 cp -R ~/.dsh /tmp/dsh-smoke
@@ -620,7 +622,7 @@ cargo test --manifest-path src-tauri/Cargo.toml \
   --test mcp_commands --test provider_commands --test provider_service --test import_export_sync
 
 cargo test --manifest-path src-tauri/Cargo.toml --lib -- --test-threads=1
-# 3959 passed / 0 failed / 12 ignored（供应商、MCP、会话、Skills、用量、迁移与全部既有用例）
+# 3961 passed / 0 failed / 12 ignored（供应商、MCP、会话、Skills、用量、深链接、迁移与全部既有用例）
 pnpm typecheck                                              # 通过
 pnpm build:renderer                                         # 通过
 npx vitest run                                              # 3162 passed；仅剩基线已有的 3 个失败（UsageDashboard x2、rememberedChoice）

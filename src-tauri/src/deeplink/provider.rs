@@ -220,6 +220,9 @@ impl ApiFormat {
             (AppType::Hermes, Anthropic) => Some("anthropic_messages"),
             (AppType::Hermes, OpenAiChat) => Some("chat_completions"),
             (AppType::Hermes, OpenAiResponses) => Some("codex_responses"),
+            (AppType::Dsh, Anthropic) => Some("anthropic-messages"),
+            (AppType::Dsh, OpenAiChat) => Some("openai-completions"),
+            (AppType::Dsh, OpenAiResponses) => Some("openai-responses"),
             _ => None,
         }
     }
@@ -230,6 +233,7 @@ impl ApiFormat {
             AppType::Claude | AppType::ClaudeDesktop => Self::Anthropic,
             AppType::Codex | AppType::GrokBuild => Self::OpenAiResponses,
             AppType::Gemini | AppType::Agy => Self::GeminiNative,
+            AppType::Dsh => Self::Anthropic,
             _ => Self::OpenAiChat,
         }
     }
@@ -340,11 +344,7 @@ pub(crate) fn build_provider_from_request(
         AppType::OpenClaw => build_additive_app_settings(request, api_format),
         AppType::Hermes => build_hermes_settings(request, api_format),
         AppType::Pi => build_pi_settings(request, api_format)?,
-        AppType::Dsh => {
-            return Err(AppError::InvalidInput(
-                "Add DeepSeek Harness providers from the DSH page".into(),
-            ));
-        }
+        AppType::Dsh => build_dsh_settings(request, api_format)?,
         AppType::Mcode => {
             return Err(AppError::InvalidInput(
                 "Add MCode providers from the MCode page".into(),
@@ -814,6 +814,53 @@ fn build_opencode_settings(
 
 /// Build settings for OpenClaw (camelCase live config).
 /// Format: { baseUrl, apiKey, api, models }
+/// DeepSeek Harness 的供应商行：DSH 需要 route、协议和至少一个模型，
+/// 链接里缺模型时直接拒绝（不猜模型名）。
+fn build_dsh_settings(
+    request: &DeepLinkImportRequest,
+    api_format: Option<ApiFormat>,
+) -> Result<serde_json::Value, AppError> {
+    let endpoint = get_primary_endpoint(request);
+    if endpoint.is_empty() {
+        return Err(AppError::InvalidInput(
+            "DeepSeek Harness links need an endpoint".into(),
+        ));
+    }
+    let model = request
+        .model
+        .as_deref()
+        .map(str::trim)
+        .filter(|model| !model.is_empty())
+        .ok_or_else(|| AppError::InvalidInput("DeepSeek Harness links need a model id".into()))?;
+    let api = match api_format.unwrap_or(ApiFormat::Anthropic) {
+        ApiFormat::Anthropic => "anthropic-messages",
+        ApiFormat::OpenAiChat => "openai-completions",
+        ApiFormat::OpenAiResponses => "openai-responses",
+        ApiFormat::GeminiNative => {
+            return Err(AppError::InvalidInput(
+                "DeepSeek Harness has no Gemini-native protocol".into(),
+            ));
+        }
+    };
+    let name = request
+        .name
+        .as_deref()
+        .unwrap_or("DeepSeek Harness provider");
+    let route = crate::dsh_config::normalize_route(name);
+    let mut settings = json!({
+        "kind": "custom",
+        "route": route,
+        "displayName": name,
+        "api": api,
+        "baseURL": endpoint,
+        "models": [{ "id": model, "name": model }],
+    });
+    if let Some(api_key) = &request.api_key {
+        settings["apiKey"] = json!(api_key);
+    }
+    Ok(settings)
+}
+
 fn build_additive_app_settings(
     request: &DeepLinkImportRequest,
     api_format: Option<ApiFormat>,

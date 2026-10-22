@@ -100,6 +100,7 @@ fn parse_provider_deeplink(
             | "openclaw"
             | "hermes"
             | "pi"
+            | "dsh"
     ) {
         return Err(AppError::InvalidInput(format!(
             "Invalid provider app type: '{app}'"

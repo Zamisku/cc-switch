@@ -177,6 +177,34 @@ fn test_parse_grokbuild_provider() {
 }
 
 #[test]
+fn test_parse_dsh_provider() {
+    use super::provider::build_provider_from_request;
+
+    let url = "ccswitch://v1/import?resource=provider&app=dsh&name=Local%20Gateway&endpoint=http%3A%2F%2F127.0.0.1%3A8787&apiKey=sk-test&model=mock-sonnet&apiFormat=anthropic";
+    let request = parse_deeplink_url(url).unwrap();
+    let provider = build_provider_from_request(&AppType::Dsh, &request).unwrap();
+    let settings = &provider.settings_config;
+
+    assert_eq!(settings["kind"], "custom");
+    assert_eq!(settings["route"], "local-gateway");
+    assert_eq!(settings["api"], "anthropic-messages");
+    assert_eq!(settings["baseURL"], "http://127.0.0.1:8787");
+    assert_eq!(settings["apiKey"], "sk-test");
+    assert_eq!(settings["models"][0]["id"], "mock-sonnet");
+}
+
+#[test]
+fn test_dsh_link_without_a_model_is_rejected() {
+    use super::provider::build_provider_from_request;
+
+    let url = "ccswitch://v1/import?resource=provider&app=dsh&name=Local&endpoint=http%3A%2F%2F127.0.0.1%3A8787";
+    let request = parse_deeplink_url(url).unwrap();
+    let error =
+        build_provider_from_request(&AppType::Dsh, &request).expect_err("DSH needs a model");
+    assert!(error.to_string().contains("model"), "{error}");
+}
+
+#[test]
 fn test_parse_invalid_scheme() {
     let url = "https://v1/import?resource=provider&app=claude&name=Test";
 
